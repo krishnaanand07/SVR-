@@ -13,19 +13,24 @@ st.set_page_config(
 
 # ---------------- TITLE ---------------- #
 st.title("💊 Medical Insurance Charges Predictor")
+
 st.write(
     "Predict medical insurance charges using a trained SVM Regression model."
 )
 
-# ---------------- LOAD MODEL ---------------- #
-MODEL_PATH = Path("svm_insurance_model.joblib")
+# ---------------- LOAD ARTIFACT ---------------- #
+MODEL_PATH = Path("svm_insurance_artifact.joblib")
 
 if not MODEL_PATH.exists():
     st.error("❌ Model file not found!")
-    st.info("Please add 'svm_insurance_model.joblib' in your project folder.")
+    st.info("Please add 'svm_insurance_artifact.joblib' in your project folder.")
     st.stop()
 
-model = joblib.load(MODEL_PATH)
+artifact = joblib.load(MODEL_PATH)
+
+model = artifact["model"]
+scaler = artifact["scaler"]
+feature_columns = artifact["feature_columns"]
 
 # ---------------- USER INPUTS ---------------- #
 st.subheader("Enter Patient Details")
@@ -67,7 +72,7 @@ region = st.selectbox(
     ["northeast", "northwest", "southeast", "southwest"]
 )
 
-# ---------------- CREATE DATAFRAME ---------------- #
+# ---------------- CREATE INPUT DATA ---------------- #
 input_data = pd.DataFrame({
     "age": [age],
     "sex": [sex],
@@ -77,10 +82,24 @@ input_data = pd.DataFrame({
     "region": [region]
 })
 
+# ---------------- ENCODING ---------------- #
+input_encoded = pd.get_dummies(input_data)
+
+# Add missing columns
+for col in feature_columns:
+    if col not in input_encoded.columns:
+        input_encoded[col] = 0
+
+# Arrange columns in same order
+input_encoded = input_encoded[feature_columns]
+
+# ---------------- SCALING ---------------- #
+input_scaled = scaler.transform(input_encoded)
+
 # ---------------- PREDICTION ---------------- #
 if st.button("Predict Insurance Charges"):
 
-    prediction = model.predict(input_data)[0]
+    prediction = model.predict(input_scaled)[0]
 
     st.success(
         f"💰 Estimated Medical Insurance Charges: ${prediction:,.2f}"
