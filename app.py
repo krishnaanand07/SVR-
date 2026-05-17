@@ -18,12 +18,11 @@ st.write(
     "Predict medical insurance charges using a trained SVM Regression model."
 )
 
-# ---------------- LOAD ARTIFACT ---------------- #
+# ---------------- LOAD MODEL ---------------- #
 MODEL_PATH = Path("svm_insurance_artifact.joblib")
 
 if not MODEL_PATH.exists():
     st.error("❌ Model file not found!")
-    st.info("Please add 'svm_insurance_artifact.joblib' in your project folder.")
     st.stop()
 
 artifact = joblib.load(MODEL_PATH)
@@ -35,12 +34,7 @@ feature_columns = artifact["feature_columns"]
 # ---------------- USER INPUTS ---------------- #
 st.subheader("Enter Patient Details")
 
-age = st.slider(
-    "Age",
-    min_value=18,
-    max_value=64,
-    value=30
-)
+age = st.slider("Age", 18, 64, 30)
 
 sex = st.selectbox(
     "Sex",
@@ -51,15 +45,14 @@ bmi = st.number_input(
     "BMI",
     min_value=10.0,
     max_value=60.0,
-    value=25.0,
-    step=0.1
+    value=25.0
 )
 
 children = st.slider(
-    "Number of Children",
-    min_value=0,
-    max_value=5,
-    value=1
+    "Children",
+    0,
+    5,
+    1
 )
 
 smoker = st.selectbox(
@@ -73,28 +66,25 @@ region = st.selectbox(
 )
 
 # ---------------- CREATE INPUT DATA ---------------- #
-input_data = pd.DataFrame({
-    "age": [age],
-    "sex": [sex],
-    "bmi": [bmi],
-    "children": [children],
-    "smoker": [smoker],
-    "region": [region]
-})
+input_data = {
+    "age": age,
+    "bmi": bmi,
+    "children": children,
+    "sex_male": 1 if sex == "male" else 0,
+    "smoker_yes": 1 if smoker == "yes" else 0,
+    "region_northwest": 1 if region == "northwest" else 0,
+    "region_southeast": 1 if region == "southeast" else 0,
+    "region_southwest": 1 if region == "southwest" else 0,
+}
 
-# ---------------- ENCODING ---------------- #
-input_encoded = pd.get_dummies(input_data)
+# Create dataframe
+input_df = pd.DataFrame([input_data])
 
-# Add missing columns
-for col in feature_columns:
-    if col not in input_encoded.columns:
-        input_encoded[col] = 0
+# Ensure same column order
+input_df = input_df.reindex(columns=feature_columns, fill_value=0)
 
-# Arrange columns in same order
-input_encoded = input_encoded[feature_columns]
-
-# ---------------- SCALING ---------------- #
-input_scaled = scaler.transform(input_encoded)
+# ---------------- SCALE DATA ---------------- #
+input_scaled = scaler.transform(input_df)
 
 # ---------------- PREDICTION ---------------- #
 if st.button("Predict Insurance Charges"):
@@ -102,11 +92,11 @@ if st.button("Predict Insurance Charges"):
     prediction = model.predict(input_scaled)[0]
 
     st.success(
-        f"💰 Estimated Medical Insurance Charges: ${prediction:,.2f}"
+        f"💰 Estimated Insurance Charges: ${prediction:,.2f}"
     )
 
     st.subheader("Entered Details")
-    st.dataframe(input_data)
+    st.dataframe(input_df)
 
 # ---------------- FOOTER ---------------- #
 st.markdown("---")
